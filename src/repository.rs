@@ -1,15 +1,35 @@
 use chrono::NaiveDateTime;
 use crate::error::RaptoboError;
 use crate::utils::{download, parse_metadata, stanza_list, stanza_value, stanza_text, stanza_opt_value, stanza_files, File};
+use clap::Parser;
 
 
-#[derive(Debug)]
+#[derive(Debug, Parser)]
 pub struct RepositorySpec {
+    /// Is the repository using a flat layout?
+    #[arg(short, long, default_value_t = false)]
     pub flat: bool,
+    /// Is the repository a source repository?
+    #[arg(short, long, default_value_t = false)]
     pub source: bool,
+    /// URI of the repository root
+    #[arg(short = 'r', long = "repository", default_value_t = String::from("http://archive.ubuntu.com/ubuntu"))]
     pub uri: String,
+    /// Name of the distribution, or path to root in case of flat repository
+    #[arg(short, long, default_value_t = String::from("jammy"))]
     pub distribution: String,
+    /// Components to use
+    #[arg(short, long)]
     pub components: Option<Vec<String>>,
+}
+
+impl RepositorySpec {
+    pub fn to_repo(self) -> Repository {
+        Repository {
+            spec: self,
+            metadata: None,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -1,6 +1,7 @@
-use raptobo::repository::Repository;
+use raptobo::repository::RepositorySpec;
 use raptobo::error::RaptoboError;
 use raptobo::logger::init_logger;
+use clap::Parser;
 
 /// CLI tool apt_check 
 /// 
@@ -8,13 +9,9 @@ use raptobo::logger::init_logger;
 fn main() -> Result<(), RaptoboError>{
     init_logger();
 
-    let mut repo = Repository::new(
-        "http://archive.ubuntu.com/ubuntu",
-        "jammy",
-        None,
-        false,
-        false
-    );
+    let spec = RepositorySpec::parse();
+
+    let mut repo = spec.to_repo();
 
     repo.load_metadata()?;
 
