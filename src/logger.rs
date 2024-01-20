@@ -1,6 +1,6 @@
+use chrono::Local;
 use env_logger::Builder;
 use log::LevelFilter;
-use chrono::Local;
 use std::io::Write;
 
 /// Initialize the used env_logger.

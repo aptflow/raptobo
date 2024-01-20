@@ -5,20 +5,21 @@ use std::fmt;
 #[derive(Debug)]
 pub struct RaptoboError {
     /// The error description.
-    details: String
+    details: String,
 }
 
 impl RaptoboError {
-    
     /// Create a new error with the given message as description.
     pub fn new(msg: &str) -> RaptoboError {
-        RaptoboError{details: msg.to_string()}
+        RaptoboError {
+            details: msg.to_string(),
+        }
     }
 }
 
 impl fmt::Display for RaptoboError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.details)
+        write!(f, "{}", self.details)
     }
 }
 

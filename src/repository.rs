@@ -1,8 +1,10 @@
-use chrono::NaiveDateTime;
 use crate::error::RaptoboError;
-use crate::utils::{download, parse_metadata, stanza_list, stanza_value, stanza_text, stanza_opt_value, stanza_files, File};
+use crate::utils::{
+    download, parse_metadata, stanza_files, stanza_list, stanza_opt_value, stanza_text,
+    stanza_value, File,
+};
+use chrono::NaiveDateTime;
 use clap::Parser;
-
 
 #[derive(Debug, Parser)]
 pub struct RepositorySpec {
@@ -53,13 +55,16 @@ impl RepositoryMetadata {
         let data = parse_metadata(content)?;
 
         // search right stanza
-        let stanza = data.into_iter().find(|d| d.contains_key("Codename"))
-        .ok_or(RaptoboError::new("[RepositoryMetadata] Codename not found!"))?;
+        let stanza = data
+            .into_iter()
+            .find(|d| d.contains_key("Codename"))
+            .ok_or(RaptoboError::new(
+                "[RepositoryMetadata] Codename not found!",
+            ))?;
 
         let date = stanza_value("Date", &stanza)?;
         let date = NaiveDateTime::parse_from_str(&date, "%a, %d %b %Y %H:%M:%S %Z")
-        .map_err(|e| RaptoboError::new(&e.to_string()))?;
-
+            .map_err(|e| RaptoboError::new(&e.to_string()))?;
 
         let metadata = RepositoryMetadata {
             architectures: stanza_list("Architectures", &stanza)?,
@@ -78,7 +83,6 @@ impl RepositoryMetadata {
 
         Ok(metadata)
     }
-
 }
 
 #[derive(Debug)]
@@ -93,13 +97,11 @@ impl Repository {
         distribution: &str,
         components: Option<Vec<&str>>,
         source: bool,
-        flat: bool
+        flat: bool,
     ) -> Repository {
         let c: Option<Vec<String>> = match components {
             None => None,
-            Some(comps) => {
-                Some(comps.into_iter().map(|comp| comp.to_string()).collect())
-            }
+            Some(comps) => Some(comps.into_iter().map(|comp| comp.to_string()).collect()),
         };
 
         Repository {
@@ -114,11 +116,14 @@ impl Repository {
         }
     }
 
-    fn inrelease_url(&self)  -> String {
+    fn inrelease_url(&self) -> String {
         if self.spec.flat {
             format!("{}/{}/InRelease", self.spec.uri, self.spec.distribution)
         } else {
-            format!("{}/dists/{}/InRelease", self.spec.uri, self.spec.distribution)
+            format!(
+                "{}/dists/{}/InRelease",
+                self.spec.uri, self.spec.distribution
+            )
         }
     }
 
@@ -127,20 +132,11 @@ impl Repository {
 
         log::debug!("[load_metadata] url: {}", url);
 
-        let content = download(url)?;
+        let content = download(&url)?;
 
         let metadata = RepositoryMetadata::new(content)?;
         self.metadata = Some(metadata);
 
         Ok(())
-    }
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
     }
 }
