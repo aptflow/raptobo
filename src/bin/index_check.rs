@@ -3,7 +3,7 @@ use raptobo::logger::init_logger;
 use raptobo::package::PackageMetadata;
 use raptobo::utils::{download, download_gz, download_xz};
 use clap::{arg, command};
-use std::cmp::max;
+use std::cmp::min;
 
 fn main() -> Result<(), RaptoboError> {
     init_logger();
@@ -26,7 +26,7 @@ fn main() -> Result<(), RaptoboError> {
         log::info!("Found {} packages.", packages.len());
 
         if !packages.is_empty() {
-            let len = max(10, packages.len());
+            let len = min(2, packages.len());
             for package in &packages[..len] {
                 log::info!("{:?}", package);
             }
