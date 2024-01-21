@@ -14,8 +14,27 @@ fn main() -> Result<(), RaptoboError> {
     let mut repo = spec.to_repo();
 
     repo.load_metadata()?;
+    repo.process_files()?;
 
-    println!("{:?}", repo);
+    log::info!("[apt_check] found {} index files", repo.data.files.len());
+
+    let meta = &repo.metadata.unwrap();
+
+    let components = match &repo.spec.components {
+        Some(c) => c,
+        None => &meta.components,
+    };
+
+    let architectures = &meta.architectures;
+    
+    for comp in components {
+        for arch in architectures {
+            log::info!("[apt_check] [{}][{}] {} index files", comp, arch, repo.data.package_indices[comp][arch].len());
+            for file in &repo.data.package_indices[comp][arch] {
+                log::info!("[apt_check] Index [{}][{}] {}", comp, arch, file);
+            }
+        }
+    }
 
     Ok(())
 }

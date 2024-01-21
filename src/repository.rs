@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use crate::error::RaptoboError;
+use crate::package::PackageMetadata;
 use crate::utils::{
     download, parse_metadata, stanza_files, stanza_list, stanza_opt_value, stanza_text,
     stanza_value, File,
@@ -30,6 +33,7 @@ impl RepositorySpec {
         Repository {
             spec: self,
             metadata: None,
+            data: RepositoryData::new(),
         }
     }
 }
@@ -86,9 +90,39 @@ impl RepositoryMetadata {
 }
 
 #[derive(Debug)]
+pub enum FileHash {
+    MD5(String), SHA1(String), SHA256(String), SHA512(String)
+}
+
+#[derive(Debug)]
+pub struct FileMetadata {
+    pub path: String,
+    pub size: u64,
+    pub hashes: Vec<FileHash>,
+}
+
+#[derive(Debug)]
+pub struct RepositoryData {
+    pub files: HashMap<String, FileMetadata>,
+    pub package_indices: HashMap<String, HashMap<String, Vec<String>>>,
+    pub packages: HashMap<String, Vec<Box<PackageMetadata>>>
+}
+
+impl RepositoryData {
+    pub fn new() -> RepositoryData {
+        RepositoryData {
+            files: HashMap::new(),
+            package_indices: HashMap::new(),
+            packages: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Repository {
     pub spec: RepositorySpec,
     pub metadata: Option<RepositoryMetadata>,
+    pub data: RepositoryData,
 }
 
 impl Repository {
@@ -113,6 +147,7 @@ impl Repository {
                 components: c,
             },
             metadata: None,
+            data: RepositoryData::new(),
         }
     }
 
@@ -136,6 +171,55 @@ impl Repository {
 
         let metadata = RepositoryMetadata::new(content)?;
         self.metadata = Some(metadata);
+
+        Ok(())
+    }
+
+    pub fn process_files(&mut self) -> Result<(), RaptoboError> {
+        let meta = match &self.metadata {
+            Some(m) => m,
+            None => return Err(RaptoboError::new("[Repository::process_files] no metadata!")),
+        };
+        
+        for file in &meta.md5sum {
+            let hash = FileHash::MD5(file.hash.to_string());
+            let meta = FileMetadata {
+                path: file.path.to_string(),
+                size: file.size,
+                hashes: vec![hash],
+            };
+            self.data.files.insert(file.path.to_string(), meta);
+        }
+
+        for file in &meta.sha1 {
+            let hash = FileHash::SHA1(file.hash.to_string());
+            self.data.files.get_mut(&file.path).unwrap().hashes.push(hash);
+        }
+
+        for file in &meta.sha256 {
+            let hash = FileHash::SHA256(file.hash.to_string());
+            self.data.files.get_mut(&file.path).unwrap().hashes.push(hash);
+        }
+
+        for c_name in &meta.components {
+            if !self.data.package_indices.contains_key(c_name) {
+                self.data.package_indices.insert(c_name.to_string(), HashMap::new());
+            }
+            let component = self.data.package_indices.get_mut(c_name).unwrap();
+            for a_name in &meta.architectures {
+                if !component.contains_key(a_name) {
+                    component.insert(a_name.to_string(), Vec::new());
+                }
+                let arch = component.get_mut(a_name).unwrap();
+                for (path, _meta) in &self.data.files {
+                    if path.starts_with(c_name) {
+                        if path.contains(&format!("binary-{}", a_name)) {
+                            arch.push(path.to_string());
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
