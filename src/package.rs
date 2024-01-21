@@ -1,7 +1,7 @@
 use crate::error::RaptoboError;
 use crate::utils::{
     stanza_date, stanza_lines, stanza_opt_files, stanza_opt_list, stanza_opt_text,
-    stanza_opt_value, stanza_value, File,
+    stanza_opt_value, stanza_value, File, parse_metadata
 };
 use chrono::{DateTime, FixedOffset};
 use std::cmp::{max, Ordering};
@@ -172,6 +172,22 @@ impl PackageMetadata {
             sha512: stanza_opt_value("SHA512", &stanza),
             description_md5: stanza_opt_value("Description-md5", &stanza),
         })
+    }
+
+    pub fn parse(content: Vec<String>) -> Result<Vec<PackageMetadata>, RaptoboError> {
+        let stanzas = parse_metadata(content)?;
+
+        Ok(stanzas.into_iter()
+        .map(|s| PackageMetadata::new(s))
+        .filter(|r| match r {
+            Ok(_) => true,
+            Err(e) => {
+                log::error!("[PackageMetadata::parse] error: {}", e);
+                false
+            }
+        })
+        .map(|r| r.unwrap())
+        .collect())
     }
 }
 
@@ -378,8 +394,9 @@ impl PackageRelation {
 
     pub fn new(relation: &str) -> Result<PackageRelation, RaptoboError> {
         // see Debian Policy 7.1
+        let relation = relation.trim();
         let (r, a) = match relation.split_once("|") {
-            Some((r, a)) => (r, Some(Box::new(PackageRelation::new(a.trim())?))),
+            Some((r, a)) => (r.trim(), Some(Box::new(PackageRelation::new(a.trim())?))),
             None => (relation, None),
         };
 

@@ -4,16 +4,16 @@ use curl::easy::Easy;
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
-use xz::read::XzDecoder;
 
 pub fn download_xz(url: &str) -> Result<Vec<String>, RaptoboError> {
-    let content = download_raw(url)?;
-    let content = Cursor::new(content);
-    let mut decoder = XzDecoder::new(content);
-    let mut data = String::new();
-    let _len = decoder
-        .read_to_string(&mut data)
-        .map_err(|e| RaptoboError::new(&e.to_string()))?;
+    let mut content = download_raw(url)?;
+    log::debug!("[download_xz] len: {}", content.len());
+
+    let decompressed = lzma::decompress(&mut content)
+    .map_err(|e| RaptoboError::new(&e.to_string()))?;
+    let data = String::from_utf8(decompressed)
+    .map_err(|e| RaptoboError::new(&e.to_string()))?;
+
     let data = data.split("\n").map(|l| l.to_string()).collect();
 
     Ok(data)
@@ -273,8 +273,7 @@ pub fn stanza_opt_files(key: &str, stanza: &HashMap<String, Vec<String>>) -> Opt
                 Some(files)
             }
         }
-        Err(e) => {
-            log::error!("[stanza_opt_files] error {}", e);
+        Err(_) => {
             None
         }
     }
